@@ -36,7 +36,7 @@ go build -o emailperm -trimpath pkg/cmd/emailperm/bin.go
 sudo mv emailperm /usr/local/bin/
 ```
 
-Option 3: Download Pre-compiled Binaries
+### Option 3: Download Pre-compiled Binaries
 
 Our automated CI/CD pipeline attaches pre-compiled, standalone binaries for Linux (Arch, RHEL, Ubuntu, etc.), macOS, and Windows across both AMD64 and ARM64 architectures to every release.
 
