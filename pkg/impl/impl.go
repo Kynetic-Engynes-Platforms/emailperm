@@ -154,7 +154,7 @@ func CheckSMTP(domain string, emails []string, tracker *progress.Tracker) (map[s
 
 	client, err := smtp.NewClient(conn, mxHost)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, false, err
 	}
 	defer client.Close()
@@ -190,7 +190,7 @@ func CheckSMTP(domain string, emails []string, tracker *progress.Tracker) (map[s
 		}
 	}
 
-	client.Quit()
+	_ = client.Quit()
 	return results, catchAll, nil
 }
 

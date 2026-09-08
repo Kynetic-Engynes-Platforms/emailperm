@@ -23,7 +23,6 @@ If you have Go 1.22+ installed, you can install the binary directly to your `$GO
 go install github.com/Kynetic-Engynes-Platforms/emailperm/pkg/cmd/emailperm@latest
 ```
 
-
 ### Option 2: Build from Source
 
 Clone the repository and compile it manually:
@@ -31,7 +30,7 @@ Clone the repository and compile it manually:
 git clone https://github.com/Kynetic-Engynes-Platforms/emailperm.git
 cd emailperm
 go mod tidy
-go build -o emailperm main.go
+go build -o emailperm -trimpath pkg/cmd/emailperm/bin.go
 
 # (Optional) Move to your local bin path
 sudo mv emailperm /usr/local/bin/
@@ -39,7 +38,16 @@ sudo mv emailperm /usr/local/bin/
 
 Option 3: Download Pre-compiled Binaries
 
-Visit the Releases page to download pre-compiled binaries for Windows, macOS, and Linux.
+Our automated CI/CD pipeline attaches pre-compiled, standalone binaries for Linux (Arch, RHEL, Ubuntu, etc.), macOS, and Windows across both AMD64 and ARM64 architectures to every release.
+
+1. Navigate to the Releases page of this repository.
+2. Download the latest version corresponding to your operating system and architecture (e.g., aql-linux-amd64).
+3. Make the binary executable and move it to your system's PATH:
+
+```bash
+chmod +x emailperm-linux-amd64
+sudo mv emailperm-linux-amd64 /usr/local/bin/emailperm
+```
 
 
 ## Usage & Use Cases

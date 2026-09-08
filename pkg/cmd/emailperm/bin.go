@@ -52,7 +52,7 @@ func main() {
 					pw = progress.NewWriter()
 					pw.SetAutoStop(true)
 					pw.SetTrackerLength(25)
-					pw.SetMessageWidth(30)
+					pw.SetMessageLength(30)
 					pw.SetStyle(progress.StyleDefault)
 					pw.Style().Colors = progress.StyleColorsExample
 					pw.Style().Options.TimeInProgressPrecision = time.Millisecond
