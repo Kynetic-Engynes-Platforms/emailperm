@@ -25,7 +25,6 @@ func main() {
 			&cli.BoolFlag{Name: "verify", Aliases: []string{"v"}, Usage: "Perform active SMTP MX verification"},
 			&cli.BoolFlag{Name: "json", Aliases: []string{"j"}, Usage: "Output as JSON"},
 		},
-
 		Action: func(ctx context.Context, c *cli.Command) error {
 			fullName := c.String("name")
 			domain := c.String("domain")
@@ -56,7 +55,6 @@ func main() {
 					pw.SetStyle(progress.StyleDefault)
 					pw.Style().Colors = progress.StyleColorsExample
 					pw.Style().Options.TimeInProgressPrecision = time.Millisecond
-
 					go pw.Render()
 
 					tracker = &progress.Tracker{
@@ -98,20 +96,18 @@ func main() {
 
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			t.AppendHeader(table.Row{"Email", "Pattern", "Score", "SMTP Status", "Reason"})
+			t.AppendHeader(table.Row{"Email", "Score", "SMTP Status", "Reason"})
 			t.Style().Format.Header = text.FormatUpper
 			t.Style().Color.Header = text.Colors{text.Bold}
 
 			for _, p := range permutations {
 				t.AppendRow(table.Row{
 					text.FgHiCyan.Sprint(p.Email),
-					p.Pattern,
 					impl.ColorizeScore(p.Score),
 					impl.ColorizeSMTP(p.SMTPStatus),
 					p.Reason,
 				})
 			}
-
 			t.SetStyle(table.StyleRounded)
 			fmt.Println()
 			t.Render()

@@ -36,7 +36,7 @@ jobs:
         run: go test -v -race ./...
 
       - name: Verify Build
-        run: go build -v -o /dev/null ./pkg/cmd/
+        run: go build -v -o /dev/null ./pkg/cmd/emailperm
 
   release:
     name: Build & Publish Release (CD)
@@ -70,7 +70,7 @@ jobs:
             BINARY_NAME=${BINARY_NAME}.exe
           fi
           echo "Building $BINARY_NAME..."
-          go build -ldflags="-s -w" -o $BINARY_NAME ./pkg/cmd/
+          go build -ldflags="-s -w" -o $BINARY_NAME ./pkg/cmd/emailperm
 
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@v2

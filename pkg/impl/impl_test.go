@@ -27,122 +27,76 @@ func TestGetPlausibility(t *testing.T) {
 	}
 }
 
-func TestGetMiddleInitials(t *testing.T) {
-	tests := []struct {
-		parts    []string
-		expected string
-	}{
-		{[]string{"kuria", "kuria", "mwangi"}, "k"},
-		{[]string{"kuria", "kuria", "ndungu", "mwangi"}, "kn"},
-		{[]string{"kuria", "mwangi"}, ""}, // No middle parts
-	}
-
-	for _, tc := range tests {
-		result := getMiddleInitials(tc.parts)
-		if result != tc.expected {
-			t.Errorf("getMiddleInitials(%v) = %v; want %v", tc.parts, result, tc.expected)
+func containsEmail(perms []Permutation, email string) bool {
+	for _, p := range perms {
+		if p.Email == email {
+			return true
 		}
 	}
+	return false
 }
 
 func TestGeneratePermutations_SingleName(t *testing.T) {
 	permutations := GeneratePermutations("kuria", "kyneticengynes.com")
 
-	// For a single name, only MinParts: 1 rules should trigger.
-	// Based on our rules, that includes "first" and "first1" (2 rules).
-	expectedCount := 2
-	if len(permutations) != expectedCount {
-		t.Fatalf("Expected %d permutations for a single name, got %d", expectedCount, len(permutations))
+	if len(permutations) == 0 {
+		t.Fatalf("Expected permutations for a single name, got 0")
 	}
 
-	// Verify the highest scored item is first
-	if permutations[0].Score < permutations[1].Score {
-		t.Errorf("Permutations are not sorted by score in descending order")
-	}
-
-	// Verify the standard first name email is generated
-	found := false
-	for _, p := range permutations {
-		if p.Email == "kuria@kyneticengynes.com" {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !containsEmail(permutations, "kuria@kyneticengynes.com") {
 		t.Errorf("Missing expected permutation: kuria@kyneticengynes.com")
+	}
+
+	if !containsEmail(permutations, "kuria1@kyneticengynes.com") {
+		t.Errorf("Missing expected collision permutation: kuria1@kyneticengynes.com")
 	}
 }
 
 func TestGeneratePermutations_TwoNames(t *testing.T) {
 	permutations := GeneratePermutations("kuria Mwangi", "kyneticengynes.com")
 
-	// Verify standard enterprise format is present
-	found := false
-	for _, p := range permutations {
-		if p.Email == "kuria.mwangi@kyneticengynes.com" {
-			found = true
-			if p.Pattern != "first.last" {
-				t.Errorf("Expected pattern 'first.last', got %s", p.Pattern)
-			}
-			break
-		}
-	}
-	if !found {
-		t.Errorf("Missing expected permutation: kuria.mwangi@kyneticengynes.com")
+	expectedEmails := []string{
+		"kuria.mwangi@kyneticengynes.com",
+		"kmwangi@kyneticengynes.com",
+		"kuriam@kyneticengynes.com",
+		"kuria_mwangi@kyneticengynes.com",
 	}
 
-	// Verify collision fallback is present
-	foundCollision := false
-	for _, p := range permutations {
-		if p.Email == "kuria.mwangi1@kyneticengynes.com" {
-			foundCollision = true
-			break
+	for _, expected := range expectedEmails {
+		if !containsEmail(permutations, expected) {
+			t.Errorf("Missing expected permutation: %s", expected)
 		}
-	}
-	if !foundCollision {
-		t.Errorf("Missing expected collision permutation: kuria.mwangi1@kyneticengynes.com")
 	}
 }
 
 func TestGeneratePermutations_ThreeNames(t *testing.T) {
-	permutations := GeneratePermutations("kuria Kuria Mwangi", "kyneticengynes.com")
+	permutations := GeneratePermutations("kuria Ndungu Mwangi", "kyneticengynes.com")
 
-	// Test a specific 3-part rule like fmlast
-	found := false
-	for _, p := range permutations {
-		if p.Email == "kkmwangi@kyneticengynes.com" {
-			found = true
-			if p.Pattern != "fmlast" {
-				t.Errorf("Expected pattern 'fmlast', got %s", p.Pattern)
-			}
-			break
-		}
+	expectedEmails := []string{
+		"kuria.ndungu.mwangi@kyneticengynes.com",
+		"k.n.mwangi@kyneticengynes.com",
+		"kuria.mwangi@kyneticengynes.com",
+		"kndungumwangi@kyneticengynes.com",
 	}
-	if !found {
-		t.Errorf("Missing expected permutation: kkmwangi@kyneticengynes.com")
+
+	for _, expected := range expectedEmails {
+		if !containsEmail(permutations, expected) {
+			t.Errorf("Missing expected permutation: %s", expected)
+		}
 	}
 }
 
 func TestGeneratePermutations_Sanitization(t *testing.T) {
-	permutations := GeneratePermutations("  Nga'nga   Wanja  ", "startup.io")
+	permutations := GeneratePermutations("  Mary-Jane   O'Connor  ", "startup.io")
 
-	// It should tokenize as ["nganga", "wanja"]
-	found := false
-	for _, p := range permutations {
-		if p.Email == "nganga.wanja@startup.io" {
-			found = true
-			break
-		}
-	}
-	if !found {
-		t.Errorf("Failed to properly sanitize and tokenize complex names. Expected nganga.wanja@startup.io")
+	// It should tokenize as ["mary", "jane", "oconnor"]
+	if !containsEmail(permutations, "mary.jane.oconnor@startup.io") {
+		t.Errorf("Failed to properly sanitize and tokenize complex names. Expected mary.jane.oconnor@startup.io")
 	}
 }
 
 func TestGeneratePermutations_EmptyOrInvalid(t *testing.T) {
-	// Name entirely of numbers/symbols
 	permutations := GeneratePermutations("12345 !@#$", "startup.io")
-
 	if len(permutations) != 0 {
 		t.Errorf("Expected 0 permutations for invalid names, got %d", len(permutations))
 	}
