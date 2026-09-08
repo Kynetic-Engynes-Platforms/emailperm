@@ -14,12 +14,13 @@ import (
 
 type Permutation struct {
 	Email        string  `json:"email"`
-	Pattern      string  `json:"pattern"`
 	Score        float64 `json:"score"`
 	Plausibility string  `json:"plausibility"`
 	Reason       string  `json:"reason"`
 	SMTPStatus   string  `json:"smtp_status,omitempty"`
 }
+
+// --- Combinatorial Engine Types ---
 
 type NameState int
 
@@ -29,8 +30,10 @@ const (
 	StateOmit
 )
 
-var separators = []string{"", ".", "-", "_"}
+var separators = []string{"", ".", "_", "-"}
 var suffixes = []string{"", "1", "2"}
+
+// --- Helper Functions ---
 
 func getPlausibility(score float64) string {
 	switch {
@@ -69,39 +72,90 @@ func ColorizeSMTP(status string) string {
 	}
 }
 
+// --- Combinatorial Logic ---
+
+// generateAllOrders uses Heap's algorithm to calculate the full factorial (N!) permutations
+func generateAllOrders(k int, arr []string, res *[][]string) {
+	if k == 1 {
+		cp := make([]string, len(arr))
+		copy(cp, arr)
+		*res = append(*res, cp)
+		return
+	}
+
+	for i := 0; i < k; i++ {
+		generateAllOrders(k-1, arr, res)
+		if k%2 == 1 {
+			arr[0], arr[k-1] = arr[k-1], arr[0]
+		} else {
+			arr[i], arr[k-1] = arr[k-1], arr[i]
+		}
+	}
+}
+
 func generateEmailsFromStates(parts []string, states []NameState, results *[]Permutation, domain string, seen map[string]bool) {
 	for _, sep := range separators {
 		for _, suffix := range suffixes {
 			var emailParts []string
 			var patternDesc []string
-			score := 0.40 // Base score threshold
+
+			activeParts := 0
+			fullCount := 0
+			initialCount := 0
 
 			for i, state := range states {
 				switch state {
 				case StateFull:
 					emailParts = append(emailParts, parts[i])
 					patternDesc = append(patternDesc, "Full")
-					score += 0.20 // Reward full name utilization
+					fullCount++
+					activeParts++
 				case StateInitial:
 					emailParts = append(emailParts, string(parts[i][0]))
 					patternDesc = append(patternDesc, "Initial")
-					score += 0.10 // Minor reward for initials
+					initialCount++
+					activeParts++
 				case StateOmit:
-					patternDesc = append(patternDesc, "Omitted")
+					// Silently omit
 				}
 			}
 
-			// Adjust scores based on IT policy likelihoods
-			if sep == "." {
-				score += 0.15 // Enterprise standard
-			} else if sep == "" {
-				score += 0.05 // Common startup standard
-			} else {
-				score -= 0.10 // Hyphens/underscores are less common
+			// SAFETY CHECK: Prevent empty prefixes
+			if activeParts == 0 {
+				continue
 			}
 
+			// Base start score
+			score := 0.34
+			score += float64(fullCount) * 0.15
+			score += float64(initialCount) * 0.05
+
+			// Optimize for real-world lengths
+			switch activeParts {
+			case 1:
+				score -= 0.05 // Single names are rare
+			case 2:
+				score += 0.20 // Highly reward standard 2-part formats
+			case 3:
+				score -= 0.05 // Penalize 3 parts slightly
+			default:
+				score -= 0.20 // Heavily penalize 4+ parts
+			}
+
+			// Enforce exact punctuation sort order
+			if sep == "" {
+				score += 0.15 // Absolute top priority
+			} else if sep == "." {
+				score += 0.05 // Standard enterprise
+			} else if sep == "_" {
+				score -= 0.05 // Uncommon legacy
+			} else if sep == "-" {
+				score -= 0.10 // Absolute bottom priority
+			}
+
+			// Penalize numerical suffixes
 			if suffix != "" {
-				score -= 0.30 // Penalize collisions as they are edge cases
+				score -= 0.25
 			}
 
 			// Construct email
@@ -109,7 +163,7 @@ func generateEmailsFromStates(parts []string, states []NameState, results *[]Per
 			email := fmt.Sprintf("%s@%s", userPrefix, domain)
 			reason := strings.Join(patternDesc, "-") + " w/ separator '" + sep + "'"
 
-			// Cap score at 0.99 for realism
+			// Cap score bounds for realism
 			if score > 0.99 {
 				score = 0.99
 			}
@@ -121,7 +175,6 @@ func generateEmailsFromStates(parts []string, states []NameState, results *[]Per
 				seen[email] = true
 				*results = append(*results, Permutation{
 					Email:        email,
-					Pattern:      "Dynamic",
 					Score:        score,
 					Plausibility: getPlausibility(score),
 					Reason:       reason,
@@ -140,12 +193,7 @@ func buildCombinations(parts []string, index int, current []NameState, results *
 
 	buildCombinations(parts, index+1, append(current, StateFull), results, domain, seen)
 	buildCombinations(parts, index+1, append(current, StateInitial), results, domain, seen)
-
-	// Only allow omitting middle names
-	isMiddleName := index > 0 && index < len(parts)-1
-	if isMiddleName {
-		buildCombinations(parts, index+1, append(current, StateOmit), results, domain, seen)
-	}
+	buildCombinations(parts, index+1, append(current, StateOmit), results, domain, seen)
 }
 
 // --- Main Exported Functions ---
@@ -153,13 +201,13 @@ func buildCombinations(parts []string, index int, current []NameState, results *
 func GeneratePermutations(fullName, domain string) []Permutation {
 	dom := strings.ToLower(strings.TrimSpace(domain))
 
-	// Pre-process: Replace hyphens with spaces to split compound names (e.g., Mary-Jane -> Mary Jane)
+	// Pre-process: Replace hyphens with spaces to split compound names
 	spacedName := strings.ReplaceAll(fullName, "-", " ")
 	rawParts := strings.Fields(strings.ToLower(strings.TrimSpace(spacedName)))
 
 	var parts []string
 	for _, rp := range rawParts {
-		// Clean out non-alpha characters (O'Connor -> oconnor)
+		// Clean out non-alpha characters[cite: 1]
 		clean := strings.Map(func(r rune) rune {
 			if r >= 'a' && r <= 'z' {
 				return r
@@ -176,12 +224,21 @@ func GeneratePermutations(fullName, domain string) []Permutation {
 		return results
 	}
 
-	seen := make(map[string]bool)
-	buildCombinations(parts, 0, []NameState{}, &results, dom, seen)
+	// 1. Calculate all N! factorial orders of the name array
+	var allOrders [][]string
+	generateAllOrders(len(parts), parts, &allOrders)
 
-	sort.Slice(results, func(i, j int) bool {
+	// 2. Feed every permutation into the state builder
+	seen := make(map[string]bool)
+	for _, order := range allOrders {
+		buildCombinations(order, 0, []NameState{}, &results, dom, seen)
+	}
+
+	// Sort final results by Score (descending)[cite: 1]
+	sort.SliceStable(results, func(i, j int) bool {
 		return results[i].Score > results[j].Score
 	})
+
 	return results
 }
 
