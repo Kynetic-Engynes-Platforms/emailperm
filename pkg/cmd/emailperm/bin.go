@@ -25,6 +25,7 @@ func main() {
 			&cli.BoolFlag{Name: "verify", Aliases: []string{"v"}, Usage: "Perform active SMTP MX verification"},
 			&cli.BoolFlag{Name: "json", Aliases: []string{"j"}, Usage: "Output as JSON"},
 		},
+
 		Action: func(ctx context.Context, c *cli.Command) error {
 			fullName := c.String("name")
 			domain := c.String("domain")
