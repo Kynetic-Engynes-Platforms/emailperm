@@ -19,7 +19,7 @@ Beyond simple generation, EmailPerm includes a statistical heuristic engine to s
 ### Option 1: Install via `go install` (Recommended)
 If you have Go 1.22+ installed, you can install the binary directly to your `$GOPATH/bin`:
 ```bash
-go install https://github.com/Kynetic-Engynes-Platforms/emailperm@latest
+go install github.com/Kynetic-Engynes-Platforms/emailperm/pkg/cmd/emailperm@latest
 ```
 
 
